@@ -16,6 +16,7 @@ import de.evoila.cf.cpi.CredentialConstants;
 import de.evoila.cf.security.credentials.CredentialStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 
 
@@ -27,6 +28,7 @@ import java.util.Map;
  * @author Johannes Hiemer.
  */
 @Service
+@ConditionalOnMissingBean(MongoDBCredentialAgentBindingService.class)
 public class MongoDBBindingService extends BindingServiceImpl {
 
     private Logger log = LoggerFactory.getLogger(MongoDBBindingService.class);

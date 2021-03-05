@@ -9,4 +9,6 @@ public class CredentialConstants {
     public static String BACKUP_CREDENTIALS = "backup_credentials";
     public static String BACKUP_AGENT_CREDENTIALS = "backup_agent_credentials";
     public static String EXPORTER_CREDENTIALS = "exporter_credentials";
+    public static String CREDENTIAL_AGENT_CREDENTIALS = "credential_agent_credentials";
+
 }

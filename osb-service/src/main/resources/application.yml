@@ -1,0 +1,104 @@
+backup:
+  enabled: false
+bosh:
+  authentication: OAUTH
+  stemcellOs: ubuntu-xenial
+  stemcellVersion: latest
+  vip_network: floating
+  host: 192.168.50.6
+  username: admin
+  password: 76n5gf3cxxgu3uf9yrtm
+
+catalog:
+  services:
+    - bindable: true
+      bindings_retrievable: true
+      dashboard:
+        auth_endpoint: https://uaa.system.evoila.xyz/oauth
+        url: https://osb-mongodb.system.evoila.xyz/custom/v2/authentication
+      dashboard_client:
+        id: osb-mongodb.system.evoila.xyz
+        redirect_uri: https://osb-mongodb.system.evoila.xyz/custom/v2/authentication
+        secret: F6D80B9C-125B-43BA-951F-5A46722E0047
+      description: MongoDB Instances
+      id: 10BC484C-CDE2-45DD-9C8C-2515AE5C3233
+      instances_retrievable: true
+      name: osb-mongodb
+      plans:
+        - description: A small instance for low requirement apps
+          free: false
+          id: D98A309F-D60C-4C03-B958-579BD3DFBA88
+          metadata:
+            backup:
+              enabled: false
+              instance_group: mongodb
+            connections: 1000
+            ingress_instance_group: mongodb
+            instance_group_config:
+              - name: mongodb
+                nodes: 1
+            networks:
+              - name: default
+            persistent_disk_type: default
+            vm_type: default
+          name: s
+          platform: BOSH
+config:
+  sb:
+    name: osb-mongodb
+    uri: https://osb-mongodb.system.evoila.xyz
+    credential_agent_enabled: true
+  site:
+    postfix: ""
+    url: system.evoila.xyz
+endpoints:
+  custom:
+    - identifier: osb-backup-manager
+      url: https://osb-backup-manager.system.evoila.xyz
+    - identifier: osb-log-metric-backend
+      url: https://osb-log-metric-dashboard-backend.system.evoila.xyz
+    - identifier: osb-autoscaler-core
+      url: https://osb-autoscaler-core.system.evoila.xyz
+  default: https://osb-mongodb.system.evoila.xyz
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.bus.BusAutoConfiguration
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+  thymeleaf:
+    cache: true
+    mode: LEGACYHTML5
+  data:
+    mongodb:
+      database: evoila
+      host: 127.0.0.1
+      password: evoila
+      port: 27017
+      username: evoila
+  ssl:
+    acceptselfsigned: true
+  credhub:
+    bosh-director: bosh-lite
+    oauth2:
+      registration-id: credhub-client
+    url: "https://192.168.50.6:8844"
+  security:
+    oauth2:
+      client:
+        registration:
+          credhub-client:
+            provider: uaa
+            client-id: credhub-admin
+            client-secret: quxqqlg62sdxg1kra8a2
+            authorization-grant-type: client_credentials
+        provider:
+          uaa:
+            token-uri: "https://192.168.50.6:8443/oauth/token"
+server:
+  retry-after: 120
+login:
+  password: basic-password
+  role: USER
+  username: basic-username
+
