@@ -1,6 +1,8 @@
 package de.evoila.cf.cpi.bosh;
 
+import ch.qos.logback.core.db.dialect.DBUtil;
 import de.evoila.cf.broker.bean.BoshProperties;
+import de.evoila.cf.broker.custom.mongodb.MongoDBUtils;
 import de.evoila.cf.broker.model.ServiceInstance;
 import de.evoila.cf.broker.model.catalog.plan.Plan;
 import de.evoila.cf.broker.model.credential.PasswordCredential;
@@ -49,21 +51,47 @@ public class MongoDBDeploymentManager extends DeploymentManager {
 
         log.debug("Updating Deployment Manifest, replacing parameters");
 
+        InstanceGroup instanceGroup =  manifest.getInstanceGroup("mongodb").get();
+        JobV2 mongoJob = instanceGroup.getJob("mongodb").get();
+        Map<String, Object> mongodb_properties = getProperty(mongoJob.getProperties(),"mongodb");
+
+
+
+        List<String> databases= (List<String>) mongodb_properties.get("databases");
+        if(databases == null){
+            databases = new LinkedList<>();
+            mongodb_properties.put("databases",databases);
+        }
+        databases.add(MongoDBUtils.dbName(serviceInstance.getId()));
+
+        Map<String, Object> auth = getProperty(mongodb_properties, "auth");
+
+        PasswordCredential replicaSetKey = credentialStore.createPassword(serviceInstance,"replicaSetKey", 40);
+        Map<String, String> replset = (Map<String,String>) auth.get("replica-set");
+        if(replset == null){
+            replset = new HashMap<String, String>();
+            auth.put("replica-set", replset);
+        }
+        replset.put("keyfile", replicaSetKey.getPassword());
+
+        replset = (Map<String,String>) mongodb_properties.get("replica-set");
+        if(replset == null){
+            replset = new HashMap<String, String>();
+            mongodb_properties.put("replica-set", replset);
+        }
+        replset.put("name", serviceInstance.getId().replace("-",""));
+        
         if (!isUpdate) {
 
             UsernamePasswordCredential rootCredential = credentialStore.createUser(serviceInstance, CredentialConstants.ROOT_CREDENTIALS, "admin");
             UsernamePasswordCredential backupCredential = credentialStore.createUser(serviceInstance, CredentialConstants.BACKUP_CREDENTIALS, "backup");
             UsernamePasswordCredential backupAgentCredential = credentialStore.createUser(serviceInstance, CredentialConstants.BACKUP_AGENT_CREDENTIALS, "backup_agent");
             UsernamePasswordCredential exporterCredential = credentialStore.createUser(serviceInstance, CredentialConstants.EXPORTER_CREDENTIALS, "exporter");
-            PasswordCredential replicaSetKey = credentialStore.createPassword(serviceInstance,"replicaSetKey", 40);
 
-            InstanceGroup instanceGroup =  manifest.getInstanceGroup("mongodb").get();
 
             if(credentialStore instanceof DatabaseCredentialsClient){
-                JobV2 mongoJob = instanceGroup.getJob("mongodb").get();
                 JobV2 exportJob = instanceGroup.getJob("mongodb_exporter").get();
                 JobV2 backupJob = instanceGroup.getJob("backup-agent").get();
-                Map<String, Object> mongodb_properties = getProperty(mongoJob.getProperties(),"mongodb");
                 Map<String, Object> exporter_properties = getProperty(exportJob.getProperties(), "mongodb_exporter");
                 Map<String, Object> backup_properties = getProperty(backupJob.getProperties(), "backup_agent");
 
@@ -76,13 +104,6 @@ public class MongoDBDeploymentManager extends DeploymentManager {
                     MapUtils.deepMerge(mdbConfig, (Map<String, Object>) properties.get("config"));
                 }
 
-                Map<String, Object> auth = getProperty(mongodb_properties, "auth");
-
-                Map<String, Object> replset = getProperty(auth,"replica-set");
-                replset.put("keyfile", replicaSetKey.getPassword());
-                if (properties.containsKey("replica-set-name")){
-                    replset.put("name", properties.get("replica-set-name"));
-                }
 
                 List<HashMap<String, Object>> admins= (List<HashMap<String, Object>>) auth.get("admin_users");
                 if(admins == null){
@@ -106,6 +127,8 @@ public class MongoDBDeploymentManager extends DeploymentManager {
 
                 backup_properties.put("username", backupAgentCredential.getUsername());
                 backup_properties.put("password", backupAgentCredential.getPassword());
+
+
             }
         } else if (isUpdate && customParameters != null && !customParameters.isEmpty()) {
             for (Map.Entry parameter : customParameters.entrySet()) {
